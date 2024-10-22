@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #!CMD: ./mctf.sh init
 
-# Description:
+# Description: M-CTF is a tool to manage CTFs on-the-go, to quickly structure your work and document your solutions
 # Author: arch-err
 
 # Dependencies:
@@ -14,6 +14,7 @@
 #  - gomplate
 
 
+SCRIPT_VERSION="1.0.0"
 TEMPLATE_NAME="ctf-template"
 GITHUB_USERNAME=$(gh auth status | grep "Logged in" | cut -d " " -f9)
 SEP='\e[38;5;244m───────────────────────────────────────────────────\e[0m'
@@ -46,7 +47,7 @@ function show_help() {
     echo "Script version: ${SCRIPT_VERSION}"
     echo ""
     echo " COMMAND                     OPTIONS                            DESCRIPTION"
-    echo "--------------------------------------------------------------------------------------------------------------------------------"
+    echo "-----------------------------------------------------------------------------------------------"
     echo " init                                                           Initialize a new CTF"
     echo " status                                                         Show current CTF status"
     echo " solve                       -c, --challenge <challenge>        Mark a challenge as solved"
@@ -58,7 +59,7 @@ function show_help() {
 function show_status() {
 
 	if test -z "${MCTF_CURRENT}"; then
-		error "Error: Currently not in a M-CTF managed directory/repo"
+		error "Error: Currently not in a M-CTF managed directory/repo."
 		error "       Change directory and try again!"
 		exit 0
 	fi
