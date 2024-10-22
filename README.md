@@ -18,11 +18,14 @@ This script uses githubs cli-tool `gh` to create repositories automatically. You
 1. Make sure you have the binary `gh` installed on your system
 2. Generate a Personal Access Token on GitHub (**NOTE:** make sure that the token is authorized to create repositories)
 3. Log in using your PAT with the `gh auth login` command
+4. Fork my [ctf-template repo](https://github.com/arch-err/ctf-template) and make sure the repo is accessible under the address `https://github.com/<your-git-username>/ctf-template`
 
 If you don't know how to do this you should check out the links below:
 - https://cli.github.com/
 - https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#further-reading
 - https://cli.github.com/manual/gh_auth_login
+- https://github.com/arch-err/ctf-template
+- https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/fork-a-repo
 
 
 ### Dependencies
