@@ -13,6 +13,18 @@ A tool to manage CTFs on-the-go, to structure your work and document your soluti
 
 ## Manually
 
+### GitHub-CLI
+This script uses githubs cli-tool `gh` to create repositories automatically. You will need to do the following in order to use this script:
+1. Make sure you have the binary `gh` installed on your system
+2. Generate a Personal Access Token on GitHub (**NOTE:** make sure that the token is authorized to create repositories)
+3. Log in using your PAT with the `gh auth login` command
+
+If you don't know how to do this you should check out the links below:
+- https://cli.github.com/
+- https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#further-reading
+- https://cli.github.com/manual/gh_auth_login
+
+
 ### Dependencies
 #### Arch-based systems (AUR)
 ```bash
