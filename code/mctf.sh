@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-#!CMD: ./mctf.sh test
-#!CMD: ./mctf.sh solve
 #!CMD: ./mctf.sh init
 
 # Description:
-# Author:
+# Author: arch-err
 
 # Dependencies:
 #  - fzf
@@ -14,8 +12,6 @@
 #  - git
 #  - gh (github cli)
 #  - gomplate
-#  - <++>
-#  - <++>
 
 
 TEMPLATE_NAME="ctf-template"
@@ -52,7 +48,36 @@ function show_help() {
     echo " COMMAND                     OPTIONS                            DESCRIPTION"
     echo "--------------------------------------------------------------------------------------------------------------------------------"
     echo " init                                                           Initialize a new CTF"
+    echo " status                                                         Show current CTF status"
+    echo " solve                       -c, --challenge <challenge>        Mark a challenge as solved"
+    echo " unsolve                     -c, --challenge <challenge>        Unmark a solved challenge"
 
+}
+
+# Arguments none
+function show_status() {
+
+	if test -z "${MCTF_CURRENT}"; then
+		error "Error: Currently not in a M-CTF managed directory/repo"
+		error "       Change directory and try again!"
+		exit 0
+	fi
+
+	print_header
+
+	SOLVED_CHALLENGES=$(grep -P "\*\*Flags:\*\*" "${MCTF_ROOT_DIR}/README.md" | sed "s/.*\((.*)\).*/\1/")
+
+	printf "\n${SEP}\n\n"
+
+	printf "\e[38;5;248mCurrently playing \e[38;5;43m${MCTF_CURRENT}"
+	echo ""
+
+
+	printf "\e[38;5;246mUsername: \e[38;5;43m${MCTF_USERNAME}\n"
+	printf "\e[38;5;246mTeam: \e[38;5;43m${MCTF_TEAM}\n"
+	printf "\e[38;5;246mSolved Challenges: \e[38;5;43m${SOLVED_CHALLENGES}\n"
+	printf "\e[38;5;246mM-CTF Root Dir: \e[38;5;43m${MCTF_ROOT_DIR}\n"
+	printf "\e[0m"
 }
 
 # Arguments none
@@ -67,17 +92,7 @@ function print_header() {
                                               [0m
     \e[0m \n"
 
-	printf "     Managed CTFs  Created by @arch-err \n\n"
-}
-
-# Arguments none
-function testing() {
-	pushd TestCTF >/dev/null
-	# bulk_init_challenges
-	# print_header
-	# new_challenge "test"
-	get_username
-	popd >/dev/null
+	printf "\e[38;5;248m     Managed CTFs    |    Created by \e[38;5;33m@arch-err \e[0m \n"
 }
 
 # Arguments name description
@@ -88,7 +103,7 @@ function new_challenge() {
 	# yq e -i ".challenges += [{"name": "${name}", "description": "${description}"}]" "ctf.yaml"
 	yq -e -i ".challenges += [{\"name\": \"${name}\"}]" "ctf.yaml"
 
-	pushd challenges >/dev/null
+	pushd ${MCTF_ROOT_DIR}/challenges >/dev/null
 
 	mkdir "${name}"
 	pushd ${name} >/dev/null
@@ -156,7 +171,9 @@ function init() {
 
 	gh repo create "$CTF_NAME" \
 		--template "$TEMPLATE_NAME" \
-		--private
+		--description "Files and Solutions to ${CTF_NAME}" \
+		--private \
+		--disable-wiki
 	sleep 1
 
 	REPO_URL=git@github.com:${GITHUB_USERNAME}/${CTF_NAME}.git
@@ -191,11 +208,44 @@ function init() {
 
 	init_readme
 
+	mkdir challenges
 	bulk_init_challenges
+	echo ""
 
 
+	printf "\n${SEP}\n\n"
+	printf "\e[38;5;240m"
+	git add --all
+	git commit -m "[AUTO] \$ mctf init"
+	git push
+	printf "\e[0m"
+	printf "\n${SEP}\n\n"
+
+	success "Successfully initialized repo \"${CTF_NAME}\"."
+	success "Good luck with the CTF!!"
 
 	popd >/dev/null
+}
+
+# Arguments challenge
+function add_challenge() {
+	local challenge=$1
+
+	if test -z "$challenge"; then
+		printf "\e[38;5;244mChallenge Name: \e[38;5;43m"
+	    read challenge
+		printf "\e[0m"
+	fi
+
+	curr_challenge_count=$(grep "\*\*Flags:\*\* (" README.md | sed 's/.*(.*\/\([0-9]\+\))/\1/')
+	new_challenge_count=$(( curr_challenge_count + 1 ))
+
+	sed -i "s/\(.*Flags.*(.*\/\)${curr_challenge_count}/\1${new_challenge_count}/" README.md
+
+	new_challenge "${challenge}"
+
+	cd ${MCTF_ROOT_DIR}/challenges/${challenge}
+	$EDITOR README.md
 }
 
 # Arguments none
@@ -227,6 +277,8 @@ function get_username() {
 	read -e -i "${MCTF_USERNAME}" CTF_USERNAME
 	printf "\e[0m"
 }
+
+# Arguments none
 function get_team() {
 	printf "\e[38;5;244mTeam: \e[38;5;43m"
 	read -e -i "${MCTF_TEAM}" CTF_TEAM
@@ -247,7 +299,7 @@ function setup_direnv() {
 	touch .envrc
 
 	echo "export MCTF_USERNAME=${CTF_USERNAME}" >> .envrc
-	echo "export MCTF_TEAM=${CTF_USERNAME}" >> .envrc
+	echo "export MCTF_TEAM=${CTF_TEAM}" >> .envrc
 	echo "export MCTF_CURRENT=${CTF_NAME}" >> .envrc
 	echo "export MCTF_ROOT_DIR=\"${CTF_ROOT_DIR}\"" >> .envrc
 
@@ -257,6 +309,8 @@ function setup_direnv() {
 
 # Arguments challenge_name
 function solve_challenge() {
+	local challenge_name=$1
+
 	pushd "${MCTF_ROOT_DIR}" >/dev/null
 
 
@@ -269,7 +323,7 @@ function solve_challenge() {
 	done
 
 
-	chal=$(echo "${challenges}" | sed "s/^ //; s/ /\n/g" | fzf --height 15 --reverse --prompt "Challenge: ")
+	chal=$(echo "${challenges}" | sed "s/^ //; s/ /\n/g" | fzf --height 15 --reverse --prompt "Challenge: " -q "$challenge_name")
 
 	sed -i "s/- \[ \] ${chal}/- \[x\] ${chal}/" README.md
 	curr_solved_count=$(grep "\*\*Flags:\*\* (" README.md | sed 's/.*(\([0-9]\+\)\/.*/\1/')
@@ -277,13 +331,37 @@ function solve_challenge() {
 
 	sed -i "s/\(.*Flags.*(\)${curr_solved_count}/\1${new_solved_count}/" README.md
 
-
-	# $EDITOR "challenges/${chal}/README.md"
-
+	$EDITOR "challenges/${chal}/README.md"
 
 	popd >/dev/null
 }
 
+# Arguments challenge_name
+function unsolve_challenge() {
+	local challenge_name=$1
+
+	pushd "${MCTF_ROOT_DIR}" >/dev/null
+
+
+	challenges=$(grep -P "\- \[x\]" README.md | sed "s/^\- \[x\] //")
+	for c in ${challenges}
+	do
+		if ! ls "challenges/${c}" &>/dev/null; then
+			challenges=$(echo ${challenges} | sed "s/${c}//")
+		fi
+	done
+
+
+	chal=$(echo "${challenges}" | sed "s/^ //; s/ /\n/g" | fzf --height 15 --reverse --prompt "Challenge: " -q "$challenge_name")
+
+	sed -i "s/- \[ \] ${chal}/- \[x\] ${chal}/" README.md
+	curr_solved_count=$(grep "\*\*Flags:\*\* (" README.md | sed 's/.*(\([0-9]\+\)\/.*/\1/')
+	new_solved_count=$(( curr_solved_count - 1 ))
+
+	sed -i "s/\(.*Flags.*(\)${curr_solved_count}/\1${new_solved_count}/" README.md
+
+	popd >/dev/null
+}
 
 ## -allow a command to fail with !’s side effect on errexit
 # -use return value from ${PIPESTATUS[0]}, because ! hosed $?
@@ -293,8 +371,8 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
     exit 1
 fi
 
-OPTIONS=h
-LONGOPTS=help
+OPTIONS=hc:
+LONGOPTS=help,c:
 
 # -regarding ! and PIPESTATUS see above
 # -temporarily store output to be able to check for errors
@@ -315,6 +393,11 @@ while true; do
         -h|--help)
             show_help
             exit 1
+            ;;
+        -c|--challenge)
+            CHALLENGE="$1"
+            shift
+            break
             ;;
         --)
             shift
@@ -340,20 +423,17 @@ case "$COMMAND" in
     init)
         init
         ;;
-    test)
-        testing
-        ;;
 	solve)
-		solve_challenge
+		solve_challenge $CHALLENGE
 		;;
 	add)
 		add_challenge
 		;;
 	status)
-		status
+		show_status
 		;;
 	unsolve)
-		unsolve_challenge
+		unsolve_challenge $CHALLENGE
 		;;
     *)
         echo "Unknown command"
