@@ -212,6 +212,7 @@ function init() {
 	init_readme
 
 	mkdir challenges
+	mkdir assets
 	bulk_init_challenges
 	echo ""
 
