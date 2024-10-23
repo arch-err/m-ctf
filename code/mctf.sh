@@ -52,6 +52,8 @@ function show_help() {
     echo " status                                                         Show current CTF status"
     echo " solve                       -c, --challenge <challenge>        Mark a challenge as solved"
     echo " unsolve                     -c, --challenge <challenge>        Unmark a solved challenge"
+    echo " sync                                                           Sync with the git repository"
+	echo "                                                                (commit and push everything)"
 
 }
 
@@ -364,6 +366,16 @@ function unsolve_challenge() {
 	popd >/dev/null
 }
 
+# Arguments none
+function sync_git() {
+	pushd "${MCTF_ROOT_DIR}" >/dev/null
+
+	git add --all
+	git commit -m "[AUTO] \$ mctf sync"
+	git push
+
+	popd >/dev/null
+}
 ## -allow a command to fail with !’s side effect on errexit
 # -use return value from ${PIPESTATUS[0]}, because ! hosed $?
 ! getopt --test > /dev/null
@@ -435,6 +447,9 @@ case "$COMMAND" in
 		;;
 	unsolve)
 		unsolve_challenge $CHALLENGE
+		;;
+	sync)
+		sync_git
 		;;
     *)
         echo "Unknown command"
