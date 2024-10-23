@@ -90,14 +90,14 @@ $ mctf status
 *The image at the top of this README is an example of what the output of a `status` command can look like*
 
 
-## 3. Add Challenges
+## 4. Add Challenges
 To add new challenges to an already initialized CTF you can use the following command:
 ```bash
 $ mctf add -b/--bulk (optional)
 ```
 
 
-## 4. Sync with git
+## 5. Sync with git
 To sync your progress with git you can of course use git commands in any way you want, however, if just want so quickly push everything to git you can use the following command:
 ```bash
 $ mctf sync
