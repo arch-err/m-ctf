@@ -361,7 +361,8 @@ function unsolve_challenge() {
 	pushd "${MCTF_ROOT_DIR}" >/dev/null
 
 
-	challenges=$(grep -P "\- \[x\]" README.md | sed "s/^\- \[x\] //")
+	challenges=$(grep -P "\- \[x\]" README.md | sed "s/^\- \[x\] \[\(.*\)\].*/\1/")
+	echo $challenges
 	for c in ${challenges}
 	do
 		if ! ls "challenges/${c}" &>/dev/null; then
@@ -372,7 +373,7 @@ function unsolve_challenge() {
 
 	chal=$(echo "${challenges}" | sed "s/^ //; s/ /\n/g" | fzf --height 15 --reverse --prompt "Challenge: " -q "$challenge_name")
 
-	sed -i "s/- \[ \] \[${chal}\]/- \[x\] \[${chal}\]/" README.md
+	sed -i "s/- \[x\] \[${chal}\]/- \[ \] \[${chal}\]/" README.md
 	curr_solved_count=$(grep "\*\*Flags:\*\* (" README.md | sed 's/.*(\([0-9]\+\)\/.*/\1/')
 	new_solved_count=$(( curr_solved_count - 1 ))
 
