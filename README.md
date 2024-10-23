@@ -73,15 +73,32 @@ This command will initialize a git repo with metadata, READMEs, challenge-templa
 This action is fully interactive and needs no more flags/switches or other types of given data before execution.
 
 
-## 2. Solve
+## 2. Solve challenges
 ```bash
 $ mctf solve <challenge> (optional)
+or
+$ mctf unsolve <challenge> (optional)
 ```
-This command gives you a menu to select a challenge, mark it as finished in the README, and then increment the counter that keeps track of solved challenges.
+This command gives you a menu to select a challenge, mark it as finished in the README, and then increment the counter that keeps track of solved challenges. Use `unsolve` to do the opposite.
 
 
 ## 3. Status
 To show the status of the current CTF you can run the following command:
 ```bash
 $ mctf status
+```
+*The image at the top of this README is an example of what the output of a `status` command can look like*
+
+
+## 3. Add Challenges
+To add new challenges to an already initialized CTF you can use the following command:
+```bash
+$ mctf add -b/--bulk (optional)
+```
+
+
+## 4. Sync with git
+To sync your progress with git you can of course use git commands in any way you want, however, if just want so quickly push everything to git you can use the following command:
+```bash
+$ mctf sync
 ```
