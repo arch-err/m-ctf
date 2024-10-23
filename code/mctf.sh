@@ -136,7 +136,7 @@ function new_challenge() {
 
 	popd >/dev/null
 
-	echo "- [ ] ${name}" >> README.md
+	echo "- [ ] [${name}](${name})" >> README.md
 
 	printf "\e[38;5;240m ◦ Creating files in \e[38;5;244mchallenges/${name} \e[38;5;28m ✓\e[0m\n"
 
@@ -343,7 +343,7 @@ function solve_challenge() {
 
 	chal=$(echo "${challenges}" | sed "s/^ //; s/ /\n/g" | fzf --height 15 --reverse --prompt "Challenge: " -q "$challenge_name")
 
-	sed -i "s/- \[ \] ${chal}/- \[x\] ${chal}/" README.md
+	sed -i "s/- \[ \] \[${chal\]}/- \[x\] \[${chal}\]/" README.md
 	curr_solved_count=$(grep "\*\*Flags:\*\* (" README.md | sed 's/.*(\([0-9]\+\)\/.*/\1/')
 	new_solved_count=$(( curr_solved_count + 1 ))
 
