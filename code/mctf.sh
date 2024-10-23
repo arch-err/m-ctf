@@ -14,7 +14,7 @@
 #  - gomplate
 
 
-SCRIPT_VERSION="1.0.0"
+SCRIPT_VERSION="1.2.0"
 TEMPLATE_NAME="ctf-template"
 GITHUB_USERNAME=$(gh auth status | grep "Logged in" | cut -d " " -f9)
 SEP='\e[38;5;244m───────────────────────────────────────────────────\e[0m'
