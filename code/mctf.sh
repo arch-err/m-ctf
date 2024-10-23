@@ -370,10 +370,25 @@ function unsolve_challenge() {
 function sync_git() {
 	pushd "${MCTF_ROOT_DIR}" >/dev/null
 
-	git add --all
-	git commit -m "[AUTO] \$ mctf sync"
-	git push
 
+	commit_msg="[AUTO] \$ mctf sync"
+
+	printf "\e[38;5;248mSyncing with upstream git repo...\n"
+	printf "\e[38;5;240m"
+	git add --all
+	git commit -m "${commit_msg}"
+	git push
+	printf "\e[0m"
+
+	commit_sha=$(git log -q | grep commit | head -1 | cut -d" " -f2)
+
+	success "Successfully synced using commit message:"
+	printf "  \e[38;5;32m${commit_msg}\n"
+	success "and commit sha:"
+	printf "  \e[38;5;32m${commit_sha}\n"
+
+
+	printf "\e[0m"
 	popd >/dev/null
 }
 ## -allow a command to fail with !’s side effect on errexit
