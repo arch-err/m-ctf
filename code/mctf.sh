@@ -18,6 +18,7 @@ SCRIPT_VERSION="1.0.0"
 TEMPLATE_NAME="ctf-template"
 GITHUB_USERNAME=$(gh auth status | grep "Logged in" | cut -d " " -f9)
 SEP='\e[38;5;244m───────────────────────────────────────────────────\e[0m'
+BULK_ADD=false
 
 set -e
 
@@ -52,6 +53,8 @@ function show_help() {
     echo " status                                                         Show current CTF status"
     echo " solve                       -c, --challenge <challenge>        Mark a challenge as solved"
     echo " unsolve                     -c, --challenge <challenge>        Unmark a solved challenge"
+    echo " add                         -b, --bulk                         Add challenges to an already"
+	echo "                                                                initialized CTF"
     echo " sync                                                           Sync with the git repository"
 	echo "                                                                (commit and push everything)"
 
@@ -262,6 +265,10 @@ function bulk_init_challenges() {
 
 	echo ""
 
+	if $BULK_ADD; then
+		printf "\e[38;5;248mBulk adding challenges...\e[0m\n"
+	fi
+
 	i=0
 
 	for challenge in $(grep -Pv "^#" .challenges.txt)
@@ -270,7 +277,14 @@ function bulk_init_challenges() {
 		i=$((i+1))
 	done
 
-	sed -i "s/\(.*Flags.*\/\)X/\1${i}/" README.md
+	if $BULK_ADD; then
+		sed -i "s/- \[ \] ${chal}/- \[x\] ${chal}/" README.md
+		curr_challenge_count=$(grep "\*\*Flags:\*\* (" README.md | sed 's/.*\/\([0-9]\+\)).*/\1/')
+		new_challenge_count=$(( curr_challenge_count + i ))
+		sed -i "s/\(.*Flags.*\/\)${curr_challenge_count}/\1${new_challenge_count}/" README.md
+	else
+		sed -i "s/\(.*Flags.*\/\)X/\1${i}/" README.md
+	fi
 
 	rm .challenges.txt
 }
@@ -401,7 +415,7 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
 fi
 
 OPTIONS=hc:
-LONGOPTS=help,c:
+LONGOPTS=help,challenge:,bulk
 
 # -regarding ! and PIPESTATUS see above
 # -temporarily store output to be able to check for errors
@@ -423,10 +437,13 @@ while true; do
             show_help
             exit 1
             ;;
-        -c|--challenge)
-            CHALLENGE="$1"
+        --bulk)
+            BULK_ADD=true
             shift
-            break
+            ;;
+        -c|--challenge)
+            CHALLENGE="$2"
+            shift 2
             ;;
         --)
             shift
@@ -456,7 +473,11 @@ case "$COMMAND" in
 		solve_challenge $CHALLENGE
 		;;
 	add)
-		add_challenge
+		if $BULK_ADD; then
+			bulk_init_challenges
+		else
+			add_challenge
+		fi
 		;;
 	status)
 		show_status
