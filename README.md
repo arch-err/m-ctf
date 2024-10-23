@@ -8,7 +8,7 @@ A tool to manage CTFs on-the-go, to structure your work and document your soluti
 # Installation
 
 ## One-line-install
-*There will be a one-line-install available in the future, byt for now you'll have to install the scripts dependencies manually.*
+*There will be a one-line-install available in the future, but for now you'll have to install the scripts dependencies manually.*
 
 
 ## Manually
