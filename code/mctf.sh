@@ -362,7 +362,7 @@ function unsolve_challenge() {
 
 
 	challenges=$(grep -P "\- \[x\]" README.md | sed "s/^\- \[x\] \[\(.*\)\].*/\1/")
-	echo $challenges
+
 	for c in ${challenges}
 	do
 		if ! ls "challenges/${c}" &>/dev/null; then
