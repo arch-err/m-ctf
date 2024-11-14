@@ -136,7 +136,7 @@ function new_challenge() {
 
 	popd >/dev/null
 
-	echo "- [ ] [${name}](${name})" >> README.md
+	echo "- [ ] [${name}](challenges/${name})" >> README.md
 
 	printf "\e[38;5;240m ◦ Creating files in \e[38;5;244mchallenges/${name} \e[38;5;28m ✓\e[0m\n"
 
