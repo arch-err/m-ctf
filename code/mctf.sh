@@ -14,12 +14,13 @@
 #  - gomplate
 
 
-SCRIPT_VERSION="1.2.1"
+SCRIPT_VERSION="2.0.0"
 TEMPLATE_NAME="ctf-template"
 # GITHUB_USERNAME=$(gh auth status | grep "Logged in" | cut -d " " -f9)
 GITHUB_USERNAME=arch-err # hardcoded cuz I wanna work offline...
 SEP='\e[38;5;244m───────────────────────────────────────────────────\e[0m'
 BULK_ADD=false
+AUTO_ADD=false
 
 set -e
 
@@ -102,44 +103,106 @@ function print_header() {
 	printf "\e[38;5;248m     Managed CTFs    |    Created by \e[38;5;33m@arch-err \e[0m \n"
 }
 
-# Arguments name description
+# Arguments name auto category
 function new_challenge() {
 	local name=$1
-	local description=$2
+	local auto=$2
+	local category=$3
 
-	# yq e -i ".challenges += [{"name": "${name}", "description": "${description}"}]" "ctf.yaml"
-	yq -e -i ".challenges += [{\"name\": \"${name}\"}]" "ctf.yaml"
+	escaped_name="${name}"
+	name="${name//_/ }"
+
+	## Handle challenge names with an underscore ('_') in them
+	if curl -sL ${CTF_URL}/api/v1/challenges -H "Cookie: session=${SESSION_COOKIE}" | jq ".data[].name" | grep -q "$escaped_name"; then
+		name="$escaped_name"
+	fi
+
+	## Don't add chall if it already exist
+	if yq '.challenges[] | select( .name == "'${escaped_name}'" ) | .name' "$MCTF_ROOT_DIR/ctf.yaml" | grep -q "${escaped_name}"; then
+		warn "Warning: Challenge '${escaped_name}' already exists, skipping..."
+		return 0
+	fi
+
+
+	yq -e -i ".challenges += [{\"name\": \"${escaped_name}\"}]" "$MCTF_ROOT_DIR/ctf.yaml"
 
 	pushd ${MCTF_ROOT_DIR}/challenges >/dev/null
 
-	mkdir "${name}"
-	pushd ${name} >/dev/null
+	mkdir "${escaped_name}" 2>&1 | grep -v "File exists"
+	pushd "${escaped_name}" >/dev/null
 
-	echo "#!/usr/bin/env bash
-#!CMD: ./solve.sh
-<++>" >> solve.sh
-
-	echo "# ${name}
-*<++>*
-
-## Solution
-1. <++>
-2. \`<++>\`
-3. \`./solve.sh\`
+	mkdir "./original_files"  2>&1 | grep -v "File exists"
 
 
-## Flag
-**Flag:** \`<++>\`" >> README.md
+	README="./README.md"
 
-	mkdir original_files
+	echo "# Notes for ${name}" > "./Notes.md"
+
+	echo "# ${name}" > "$README"
+
+
+	if "$auto"; then
+		id=$(curl -sL ${CTF_URL}/api/v1/challenges -H "Cookie: session=${SESSION_COOKIE}" | jq ".data[] | select(.name == \"${name}\") | .id")
+
+		description=$(curl -sL ${CTF_URL}/api/v1/challenges/${id} -H "Cookie: session=${SESSION_COOKIE}" | jq ".data.description" | sed "s/^\"//; s/\"$//")
+		connection_info=$(curl -sL ${CTF_URL}/api/v1/challenges/${id} -H "Cookie: session=${SESSION_COOKIE}" | jq ".data.connection_info" | sed "s/^\"//; s/\"$//")
+
+		file_paths=$(curl -sL ${CTF_URL}/api/v1/challenges/${id}/files -H "Cookie: session=${SESSION_COOKIE}" | jq -r ".data[].location")
+
+		if ! test -z "$file_paths"; then
+			pushd "./original_files" >/dev/null
+			for path in $file_paths
+			do
+				curl -LOs "${CTF_URL}/files/${path}" -H "Cookie: session=${SESSION_COOKIE}"
+			done
+			popd >/dev/null
+		fi
+
+
+		echo "\`$category\`   \`id:$id\`" >> "$README"
+		echo >> "$README"
+
+		echo "## Description" >> "$README"
+		echo -e "$description" | sed 's/^/> /; s/\r//' >> "$README"
+		echo >> "$README"
+		if ! [ "$connection_info" == "null" ]; then
+		    echo "**Connection Info:** \`${connection_info}\`" >> "$README"
+		fi
+		echo "**Given Files:** [./original_files](./original_files)" >> "$README"
+		echo >> "$README"
+		echo >> "$README"
+
+	else
+		echo "\`<++>\`" >> "$README"
+		echo >> "$README"
+
+		echo "## Description" >> "$README"
+		echo "> <++>" >> "$README"
+		echo >> "$README"
+		echo "**Connection Info:** \`<++>\`" >> "$README"
+		echo "**Given Files:** [./original_files](./original_files)" >> "$README"
+
+		echo >> "$README"
+		echo >> "$README"
+	fi
+
+	echo "## Solution" >> "$README"
+	echo "- <++>" >> "$README"
+	echo "- \`<++>\`" >> "$README"
+	echo "- Run [solve.py](./solve.py)" >> "$README"
+	touch solve.py
+
+	echo >> "$README"
+	echo "---" >> "$README"
+	echo "**Flag:** \`<++>\`" >> "$README"
+
 
 	popd >/dev/null
-
 	popd >/dev/null
 
-	echo "- [ ] [${name}](challenges/${name})" >> README.md
+	echo "- [ ] [${name}](challenges/${escaped_name})" >> README.md
 
-	printf "\e[38;5;240m ◦ Creating files in \e[38;5;244mchallenges/${name} \e[38;5;28m ✓\e[0m\n"
+	printf "\e[38;5;240m ◦ Creating files in \e[38;5;244mchallenges/${escaped_name} \e[38;5;28m ✓\e[0m\n"
 
 }
 
@@ -178,6 +241,7 @@ function init() {
 
 	gh repo create "$CTF_NAME" \
 		--template "$TEMPLATE_NAME" \
+		--homepage "$CTF_URL" \
 		--description "Files and Solutions to ${CTF_NAME}" \
 		--private \
 		--disable-wiki
@@ -217,7 +281,7 @@ function init() {
 
 	mkdir challenges
 	mkdir assets
-	bulk_init_challenges
+	auto_init_challenges || bulk_init_challenges
 	echo ""
 
 
@@ -245,6 +309,8 @@ function add_challenge() {
 		printf "\e[0m"
 	fi
 
+	pushd "${MCTF_ROOT_DIR}" >/dev/null
+
 	curr_challenge_count=$(grep "\*\*Flags:\*\* (" README.md | sed 's/.*(.*\/\([0-9]\+\))/\1/')
 	new_challenge_count=$(( curr_challenge_count + 1 ))
 
@@ -254,6 +320,8 @@ function add_challenge() {
 
 	cd ${MCTF_ROOT_DIR}/challenges/${challenge}
 	$EDITOR README.md
+
+	popd >/dev/null
 }
 
 # Arguments none
@@ -289,6 +357,46 @@ function bulk_init_challenges() {
 
 	rm .challenges.txt
 }
+
+# Arguments none
+function auto_init_challenges() {
+
+	printf "\e[38;5;244mSession-Cookie: \e[38;5;43m"
+	read -e SESSION_COOKIE
+	printf "\e[0m\n"
+
+
+	if ! curl -sL ${CTF_URL}/api/v1/challenges -H "Cookie: session=${SESSION_COOKIE}" | grep -q '"success": true'; then
+		warn "Cannot get challenges. Reverting to manual challenge-population..."
+		return 1
+	fi
+
+	categories=$(curl -sL ${CTF_URL}/api/v1/challenges -H "Cookie: session=${SESSION_COOKIE}" | jq ".data[].category" | sed "s/ /_/g; s/\"//g" | sort -u)
+	README="${MCTF_ROOT_DIR}/README.md"
+	echo "" >> "$README"
+
+	for category in $categories
+	do
+		printf "\e[38;5;240mPreparing challenges for category \e[38;5;244m${category//_/ }\e[38;5;240m:\e[0m\n"
+
+		if ! grep -q "${category//_/ }" "$README"; then
+			echo "" >> "$README"
+			echo "## ${category//_/ }" >> "$README"
+		fi
+		challs=$(curl -sL ${CTF_URL}/api/v1/challenges -H "Cookie: session=${SESSION_COOKIE}" | jq ".data[] | select(.category == \"${category//_/ }\") | .name" | sed "s/ /_/g")
+
+
+		for chall in $challs
+		do
+			chall=${chall//\"/}
+
+			new_challenge "$chall" "true" "$category"
+
+		done
+	done
+	echo -e "\n---" >> "$README"
+}
+
 
 # Arguments none
 function get_username() {
@@ -350,7 +458,7 @@ function solve_challenge() {
 
 	sed -i "s/\(.*Flags.*(\)${curr_solved_count}/\1${new_solved_count}/" README.md
 
-	$EDITOR "challenges/${chal}/README.md"
+	# $EDITOR "challenges/${chal}/README.md"
 
 	popd >/dev/null
 }
@@ -416,8 +524,8 @@ if [[ ${PIPESTATUS[0]} -ne 4 ]]; then
     exit 1
 fi
 
-OPTIONS=hc:
-LONGOPTS=help,challenge:,bulk
+OPTIONS=hc:,b,a
+LONGOPTS=help,challenge:,bulk,auto
 
 # -regarding ! and PIPESTATUS see above
 # -temporarily store output to be able to check for errors
@@ -439,8 +547,12 @@ while true; do
             show_help
             exit 1
             ;;
-        --bulk)
+        -b|--bulk)
             BULK_ADD=true
+            shift
+            ;;
+        -a|--auto)
+            AUTO_ADD=true
             shift
             ;;
         -c|--challenge)
@@ -477,6 +589,8 @@ case "$COMMAND" in
 	add)
 		if $BULK_ADD; then
 			bulk_init_challenges
+		elif $AUTO_ADD; then
+			auto_init_challenges
 		else
 			add_challenge
 		fi
