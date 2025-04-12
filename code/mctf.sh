@@ -42,6 +42,17 @@ function success() {
     printf "\e[0;38;5;2m$message\e[0;37m\n"
 }
 
+# Arguments commit_msg
+function git-safe-push() {
+	local commit_msg="$1"
+	# git status
+	# du | awk '{print $1}'
+	# find . -type f -exec du {} \; | grep -P "^\d{5}" | awk '{print $2}' >> ${MCTF_ROOT_DIR}/.gitignore
+	git add --all
+	git commit -m "${commit_msg}"
+	# git push
+}
+
 # Arguments none
 function show_help() {
     echo "Usage:"
@@ -287,9 +298,7 @@ function init() {
 
 	printf "\n${SEP}\n\n"
 	printf "\e[38;5;240m"
-	git add --all
-	git commit -m "[AUTO] \$ mctf init"
-	git push
+	git-safe-push "[AUTO] \$ mctf init"
 	printf "\e[0m"
 	printf "\n${SEP}\n\n"
 
@@ -500,9 +509,7 @@ function sync_git() {
 
 	printf "\e[38;5;248mSyncing with upstream git repo...\n"
 	printf "\e[38;5;240m"
-	git add --all
-	git commit -m "${commit_msg}"
-	git push
+	git-safe-push "${commit_msg}"
 	printf "\e[0m"
 
 	commit_sha=$(git log -q | grep commit | head -1 | cut -d" " -f2)
@@ -516,6 +523,11 @@ function sync_git() {
 	printf "\e[0m"
 	popd >/dev/null
 }
+
+
+# git-safe-push "test"
+# exit 0
+
 ## -allow a command to fail with !’s side effect on errexit
 # -use return value from ${PIPESTATUS[0]}, because ! hosed $?
 ! getopt --test > /dev/null
@@ -578,6 +590,7 @@ if [[ $# -ne 1 ]]; then
     exit 4
 fi
 COMMAND="$1"
+
 
 case "$COMMAND" in
     init)
